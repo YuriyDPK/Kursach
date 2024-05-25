@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String
+  email     String    @unique
+  password  String
+  role      String    // 'user' или 'manager'
+  phone     String    @unique
+  listings  Listing[]
+  reviews   Review[]
+  cars      Car[]     @relation("UserCars")
+  appointments Appointment[]
+  inquiries Inquiry[]
+  transactions Transaction[] @relation("BuyerTransactions")
+}
+
+model Car {
+  id            Int      @id @default(autoincrement())
+  make          String
+  model         String
+  year          Int
+  price         Float
+  mileage       Int
+  description   String
+  seller        User     @relation(fields: [sellerId], references: [id], name: "UserCars", map: "fk_sellerId")
+  sellerId      Int
+  brand         Brand?   @relation(fields: [brandId], references: [id], name: "BrandCars", map: "fk_brandId")
+  brandId       Int?
+  dealer        Dealer?  @relation(fields: [dealerId], references: [id], name: "DealerCars", map: "fk_dealerId")
+  dealerId      Int?
+  reviews       Review[]
+  listings      Listing[]
+  parts         Part[]
+  inquiries     Inquiry[]
+  insurance     Insurance?
+  transactions  Transaction[]
+  maintenances  Maintenance[]
+}
+
+model Listing {
+  id          Int      @id @default(autoincrement())
+  car         Car      @relation(fields: [carId], references: [id], map: "fk_listing_carId")
+  carId       Int
+  user        User     @relation(fields: [userId], references: [id], map: "fk_listing_userId")
+  userId      Int
+  date        DateTime
+  status      String   // 'active', 'sold', 'expired'
+  service     Service? @relation(fields: [serviceId], references: [id], map: "fk_listing_serviceId")
+  serviceId   Int?
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  content    String
+  rating     Int
+  user       User     @relation(fields: [userId], references: [id], map: "fk_review_userId")
+  userId     Int
+  car        Car      @relation(fields: [carId], references: [id], map: "fk_review_carId")
+  carId      Int
+}
+
+model Brand {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique
+  cars   Car[]    @relation("BrandCars")
+}
+
+model Service {
+  id           Int       @id @default(autoincrement())
+  name         String
+  description  String
+  price        Float
+  listings     Listing[]
+  appointments Appointment[]
+  mechanics    MechanicService[]
+}
+
+model Appointment {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id], map: "fk_appointment_userId")
+  userId      Int
+  service     Service   @relation(fields: [serviceId], references: [id], map: "fk_appointment_serviceId")
+  serviceId   Int
+  date        DateTime
+  status      String    // 'pending', 'confirmed', 'declined'
+}
+
+model Dealer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  address     String
+  phone       String    @unique
+  cars        Car[]     @relation("DealerCars")
+}
+
+model Part {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float
+  description String
+  car         Car      @relation(fields: [carId], references: [id], map: "fk_part_carId")
+  carId       Int
+}
+
+model Inquiry {
+  id         Int      @id @default(autoincrement())
+  message    String
+  user       User     @relation(fields: [userId], references: [id], map: "fk_inquiry_userId")
+  userId     Int
+  car        Car      @relation(fields: [carId], references: [id], map: "fk_inquiry_carId")
+  carId      Int
+}
+
+model Insurance {
+  id          Int      @id @default(autoincrement())
+  companyName String
+  policyNumber String  @unique
+  car         Car      @relation(fields: [carId], references: [id], map: "fk_insurance_carId")
+  carId       Int     @unique // Добавляем @unique для одно-на-одну связи
+}
+
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  amount     Float
+  car        Car      @relation(fields: [carId], references: [id], map: "fk_transaction_carId")
+  carId      Int
+  buyer      User     @relation(fields: [buyerId], references: [id], name: "BuyerTransactions", map: "fk_transaction_buyerId")
+  buyerId    Int
+}
+
+model Mechanic {
+  id          Int       @id @default(autoincrement())
+  name        String
+  phone       String    @unique
+  services    MechanicService[]
+  maintenances Maintenance[]
+}
+
+model MechanicService {
+  mechanicId  Int
+  serviceId   Int
+  mechanic    Mechanic  @relation(fields: [mechanicId], references: [id])
+  service     Service   @relation(fields: [serviceId], references: [id])
+
+  @@id([mechanicId, serviceId])
+  @@map("MechanicServices")
+}
+
+model Maintenance {
+  id        Int       @id @default(autoincrement())
+  car       Car       @relation(fields: [carId], references: [id], map: "fk_maintenance_carId")
+  carId     Int
+  mechanic  Mechanic  @relation(fields: [mechanicId], references: [id], map: "fk_maintenance_mechanicId")
+  mechanicId Int
+  date      DateTime
+  details   String
+}
